@@ -1,0 +1,56 @@
+---
+# Playbook to create host volume directories for media servers
+- name: Setup Host Volume Directories
+  hosts: nomad_clients
+  become: true
+
+  tasks:
+    - name: Create Plex directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - "{{ plex_config_dir }}"
+        - "{{ plex_transcode_dir }}"
+      when: media_server == "plex" or media_server == "both"
+
+    - name: Create Jellyfin directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - "{{ jellyfin_config_dir }}"
+        - "{{ jellyfin_cache_dir }}"
+      when: media_server == "jellyfin" or media_server == "both"
+
+    - name: Deploy Plex host volume configuration
+      ansible.builtin.template:
+        src: ../templates/plex-host-volumes.hcl.j2
+        dest: "{{ nomad_config_dir }}/plex-host-volumes.hcl"
+        owner: root
+        group: root
+        mode: "0644"
+      when: media_server == "plex" or media_server == "both"
+      notify: Restart Nomad
+
+    - name: Deploy Jellyfin host volume configuration
+      ansible.builtin.template:
+        src: ../templates/jellyfin-host-volumes.hcl.j2
+        dest: "{{ nomad_config_dir }}/jellyfin-host-volumes.hcl"
+        owner: root
+        group: root
+        mode: "0644"
+      when: media_server == "jellyfin" or media_server == "both"
+      notify: Restart Nomad
+
+  handlers:
+    - name: Restart Nomad
+      ansible.builtin.systemd:
+        name: nomad
+        state: restarted

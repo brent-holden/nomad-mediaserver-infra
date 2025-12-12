@@ -1,0 +1,51 @@
+---
+# Playbook to install HashiCorp Nomad on CentOS Stream 10
+- name: Install HashiCorp Nomad
+  hosts: nomad
+  become: true
+
+  tasks:
+    - name: Install required packages
+      ansible.builtin.dnf:
+        name:
+          - dnf-plugins-core
+          - unzip
+        state: present
+
+    - name: Add HashiCorp repository
+      ansible.builtin.yum_repository:
+        name: hashicorp
+        description: HashiCorp Stable - $basearch
+        baseurl: https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable
+        enabled: true
+        gpgcheck: true
+        gpgkey: https://rpm.releases.hashicorp.com/gpg
+
+    - name: Install Nomad
+      ansible.builtin.dnf:
+        name: "nomad-{{ nomad_version }}"
+        state: present
+
+    - name: Create Nomad data directory
+      ansible.builtin.file:
+        path: "{{ nomad_data_dir }}"
+        state: directory
+        owner: nomad
+        group: nomad
+        mode: "0755"
+
+    - name: Create Nomad plugin directory
+      ansible.builtin.file:
+        path: "{{ nomad_plugin_dir }}"
+        state: directory
+        owner: nomad
+        group: nomad
+        mode: "0755"
+
+    - name: Create Nomad config directory
+      ansible.builtin.file:
+        path: "{{ nomad_config_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"

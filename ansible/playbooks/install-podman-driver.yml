@@ -1,0 +1,65 @@
+---
+# Playbook to install Podman and the Nomad Podman driver
+- name: Install Podman and Nomad Podman Driver
+  hosts: nomad_clients
+  become: true
+
+  tasks:
+    - name: Install Podman
+      ansible.builtin.dnf:
+        name:
+          - podman
+        state: present
+
+    - name: Enable and start Podman socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        enabled: true
+        state: started
+
+    - name: Create temporary directory for driver download
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: nomad-driver
+      register: temp_dir
+
+    - name: Download Nomad Podman driver
+      ansible.builtin.get_url:
+        url: "{{ nomad_driver_podman_url }}"
+        dest: "{{ temp_dir.path }}/nomad-driver-podman.zip"
+        mode: "0644"
+
+    - name: Extract Nomad Podman driver
+      ansible.builtin.unarchive:
+        src: "{{ temp_dir.path }}/nomad-driver-podman.zip"
+        dest: "{{ temp_dir.path }}"
+        remote_src: true
+
+    - name: Install Nomad Podman driver to plugin directory
+      ansible.builtin.copy:
+        src: "{{ temp_dir.path }}/nomad-driver-podman"
+        dest: "{{ nomad_plugin_dir }}/nomad-driver-podman"
+        remote_src: true
+        owner: nomad
+        group: nomad
+        mode: "0755"
+
+    - name: Clean up temporary directory
+      ansible.builtin.file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+
+    - name: Deploy Podman driver configuration
+      ansible.builtin.template:
+        src: ../templates/podman.hcl.j2
+        dest: "{{ nomad_config_dir }}/podman.hcl"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Nomad
+
+  handlers:
+    - name: Restart Nomad
+      ansible.builtin.systemd:
+        name: nomad
+        state: restarted

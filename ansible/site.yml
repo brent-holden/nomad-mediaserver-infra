@@ -1,0 +1,15 @@
+---
+# Main playbook to set up complete Nomad media server infrastructure
+# Run with: ansible-playbook -i inventory.ini site.yml
+
+- name: Install Nomad
+  ansible.builtin.import_playbook: playbooks/install-nomad.yml
+
+- name: Configure Nomad
+  ansible.builtin.import_playbook: playbooks/configure-nomad.yml
+
+- name: Install Podman Driver
+  ansible.builtin.import_playbook: playbooks/install-podman-driver.yml
+
+- name: Setup Host Volume Directories
+  ansible.builtin.import_playbook: playbooks/setup-directories.yml

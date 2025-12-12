@@ -9,7 +9,23 @@ The setup uses the SMB CSI driver to mount a network file share containing media
 ## Directory Structure
 
 ```
-├── configuration/          # Server configuration files (future use)
+├── ansible/                # Ansible playbooks for automated setup
+│   ├── group_vars/
+│   │   └── all.yml
+│   ├── playbooks/
+│   │   ├── configure-nomad.yml
+│   │   ├── install-nomad.yml
+│   │   ├── install-podman-driver.yml
+│   │   └── setup-directories.yml
+│   ├── templates/
+│   │   ├── client.hcl.j2
+│   │   ├── jellyfin-host-volumes.hcl.j2
+│   │   ├── plex-host-volumes.hcl.j2
+│   │   ├── podman.hcl.j2
+│   │   └── server.hcl.j2
+│   ├── inventory.ini
+│   └── site.yml
+├── configuration/          # Example Nomad configuration files
 ├── jobs/
 │   ├── services/           # Media server job definitions
 │   │   ├── jellyfin.nomad
@@ -71,6 +87,42 @@ Runs the Jellyfin Media Server with:
 A bash script that:
 1. Fetches the latest Plex version from the Plex API (PlexPass channel)
 2. Updates the Nomad variable `nomad/jobs/plex` with the new version
+
+## Automated Setup with Ansible
+
+The `ansible/` directory contains playbooks to automate the complete setup on CentOS Stream 10.
+
+### Playbooks
+
+| Playbook | Description |
+|----------|-------------|
+| `install-nomad.yml` | Installs Nomad from HashiCorp's official repository |
+| `configure-nomad.yml` | Deploys server and client configuration files |
+| `install-podman-driver.yml` | Installs Podman and the nomad-driver-podman plugin |
+| `setup-directories.yml` | Creates host volume directories and deploys volume configuration |
+| `site.yml` | Main playbook that runs all of the above in order |
+
+### Usage
+
+1. Edit the inventory file with your hosts:
+   ```bash
+   cd ansible
+   vi inventory.ini
+   ```
+
+2. Configure variables in `group_vars/all.yml`:
+   - Set `media_server` to `plex`, `jellyfin`, or `both`
+   - Adjust versions and paths as needed
+
+3. Run the complete setup:
+   ```bash
+   ansible-playbook -i inventory.ini site.yml
+   ```
+
+   Or run individual playbooks:
+   ```bash
+   ansible-playbook -i inventory.ini playbooks/install-nomad.yml
+   ```
 
 ## Prerequisites
 

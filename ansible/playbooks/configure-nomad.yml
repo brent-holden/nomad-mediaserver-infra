@@ -1,0 +1,38 @@
+---
+# Playbook to configure Nomad server and client
+- name: Configure Nomad
+  hosts: nomad
+  become: true
+
+  tasks:
+    - name: Deploy Nomad server configuration
+      ansible.builtin.template:
+        src: ../templates/server.hcl.j2
+        dest: "{{ nomad_config_dir }}/server.hcl"
+        owner: root
+        group: root
+        mode: "0644"
+      when: inventory_hostname in groups['nomad_servers']
+      notify: Restart Nomad
+
+    - name: Deploy Nomad client configuration
+      ansible.builtin.template:
+        src: ../templates/client.hcl.j2
+        dest: "{{ nomad_config_dir }}/client.hcl"
+        owner: root
+        group: root
+        mode: "0644"
+      when: inventory_hostname in groups['nomad_clients']
+      notify: Restart Nomad
+
+    - name: Enable and start Nomad service
+      ansible.builtin.systemd:
+        name: nomad
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart Nomad
+      ansible.builtin.systemd:
+        name: nomad
+        state: restarted
