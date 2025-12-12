@@ -9,10 +9,6 @@ nomad_data_dir: "/opt/nomad/data"
 nomad_config_dir: "/etc/nomad.d"
 nomad_plugin_dir: "/opt/nomad/plugins"
 
-# Podman driver configuration
-nomad_driver_podman_version: "0.6.2"
-nomad_driver_podman_url: "https://releases.hashicorp.com/nomad-driver-podman/{{ nomad_driver_podman_version }}/nomad-driver-podman_{{ nomad_driver_podman_version }}_linux_amd64.zip"
-
 # Host volume directories
 plex_config_dir: "/opt/plex/config"
 plex_transcode_dir: "/opt/plex/transcode"
