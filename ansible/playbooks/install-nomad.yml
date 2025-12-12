@@ -26,8 +26,8 @@
 
     - name: Install Nomad (RHEL)
       ansible.builtin.dnf:
-        name: "nomad-{{ nomad_version }}"
-        state: present
+        name: nomad
+        state: latest
       when: ansible_os_family == "RedHat"
 
     # Ubuntu/Debian tasks
@@ -56,8 +56,8 @@
 
     - name: Install Nomad (Debian)
       ansible.builtin.apt:
-        name: "nomad={{ nomad_version }}-*"
-        state: present
+        name: nomad
+        state: latest
         update_cache: true
       when: ansible_os_family == "Debian"
 

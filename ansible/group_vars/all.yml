@@ -1,12 +1,10 @@
 ---
 # Consul configuration
-consul_version: "1.20.1"
 consul_data_dir: "/opt/consul/data"
 consul_config_dir: "/etc/consul.d"
 consul_datacenter: "dc1"
 
 # Nomad configuration
-nomad_version: "1.9.3"
 nomad_data_dir: "/opt/nomad/data"
 nomad_config_dir: "/etc/nomad.d"
 nomad_plugin_dir: "/opt/nomad/plugins"
