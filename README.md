@@ -93,7 +93,7 @@ A bash script that:
 
 ## Automated Setup with Ansible
 
-The `ansible/` directory contains playbooks to automate the complete setup on CentOS Stream 10.
+The `ansible/` directory contains playbooks to automate the complete setup on CentOS Stream 10 or Ubuntu 25.10.
 
 ### Playbooks
 
@@ -131,7 +131,7 @@ The `ansible/` directory contains playbooks to automate the complete setup on Ce
 
 ## Prerequisites
 
-> **Tip:** Use the [Ansible playbooks](#automated-setup-with-ansible) to automate all of these prerequisites on CentOS Stream 10.
+> **Tip:** Use the [Ansible playbooks](#automated-setup-with-ansible) to automate all of these prerequisites on CentOS Stream 10 or Ubuntu 25.10.
 
 ### Required Infrastructure
 - Network access to the SMB/CIFS share

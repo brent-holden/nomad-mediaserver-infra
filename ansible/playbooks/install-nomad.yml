@@ -1,18 +1,20 @@
 ---
-# Playbook to install HashiCorp Nomad on CentOS Stream 10
+# Playbook to install HashiCorp Nomad on CentOS Stream 10 or Ubuntu 25.10
 - name: Install HashiCorp Nomad
   hosts: nomad
   become: true
 
   tasks:
-    - name: Install required packages
+    # CentOS/RHEL tasks
+    - name: Install required packages (RHEL)
       ansible.builtin.dnf:
         name:
           - dnf-plugins-core
           - unzip
         state: present
+      when: ansible_os_family == "RedHat"
 
-    - name: Add HashiCorp repository
+    - name: Add HashiCorp repository (RHEL)
       ansible.builtin.yum_repository:
         name: hashicorp
         description: HashiCorp Stable - $basearch
@@ -20,12 +22,46 @@
         enabled: true
         gpgcheck: true
         gpgkey: https://rpm.releases.hashicorp.com/gpg
+      when: ansible_os_family == "RedHat"
 
-    - name: Install Nomad
+    - name: Install Nomad (RHEL)
       ansible.builtin.dnf:
         name: "nomad-{{ nomad_version }}"
         state: present
+      when: ansible_os_family == "RedHat"
 
+    # Ubuntu/Debian tasks
+    - name: Install required packages (Debian)
+      ansible.builtin.apt:
+        name:
+          - gpg
+          - curl
+          - unzip
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+    - name: Add HashiCorp GPG key (Debian)
+      ansible.builtin.apt_key:
+        url: https://apt.releases.hashicorp.com/gpg
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add HashiCorp repository (Debian)
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        state: present
+        filename: hashicorp
+      when: ansible_os_family == "Debian"
+
+    - name: Install Nomad (Debian)
+      ansible.builtin.apt:
+        name: "nomad={{ nomad_version }}-*"
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+    # Common tasks
     - name: Create Nomad data directory
       ansible.builtin.file:
         path: "{{ nomad_data_dir }}"

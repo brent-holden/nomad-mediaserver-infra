@@ -1,16 +1,28 @@
 ---
-# Playbook to install Podman and the Nomad Podman driver
+# Playbook to install Podman and the Nomad Podman driver on CentOS Stream 10 or Ubuntu 25.10
 - name: Install Podman and Nomad Podman Driver
   hosts: nomad_clients
   become: true
 
   tasks:
-    - name: Install Podman
+    # CentOS/RHEL tasks
+    - name: Install Podman (RHEL)
       ansible.builtin.dnf:
         name:
           - podman
         state: present
+      when: ansible_os_family == "RedHat"
 
+    # Ubuntu/Debian tasks
+    - name: Install Podman (Debian)
+      ansible.builtin.apt:
+        name:
+          - podman
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+    # Common tasks
     - name: Enable and start Podman socket
       ansible.builtin.systemd:
         name: podman.socket
