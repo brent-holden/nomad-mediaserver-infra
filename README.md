@@ -115,9 +115,12 @@ A bash script that:
    nomad var put nomad/jobs/plex claim_token="your-claim-token" version="latest"
    ```
 
-5. Deploy media servers:
+5. Deploy a media server (choose one):
    ```bash
+   # For Plex:
    nomad job run plex.nomad
+
+   # Or for Jellyfin:
    nomad job run jellyfin.nomad
    ```
 
@@ -126,3 +129,4 @@ A bash script that:
 - Both media servers are configured with 16GB RAM and 16 CPU cores
 - The SMB share is mounted with UID 1002 and GID 1001 to match the Plex user
 - Timezone is set to America/New_York for both services
+- **Performance Warning:** Running both Plex and Jellyfin simultaneously against the same CIFS/SMB mount point may cause performance issues due to concurrent file access, library scanning, and metadata operations competing for network I/O. It is recommended to run only one media server at a time.
