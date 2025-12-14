@@ -1,14 +1,19 @@
-# Media Services on Nomad using SMB/CIFS CSI Plugin
+# Nomad CIFS/SMB CSI Infrastructure
 
-This repository contains HashiCorp Nomad job specifications for running Plex and Jellyfin media servers with shared media storage via a CIFS/SMB CSI (Container Storage Interface) plugin.
+This repository contains Ansible playbooks and Nomad job specifications for setting up a CIFS/SMB CSI (Container Storage Interface) plugin on HashiCorp Nomad. It provides the infrastructure foundation for running containerized applications with shared network storage.
 
 ## Overview
 
-The setup uses the SMB CSI driver to mount a network file share containing media files, which is then made available to both Plex and Jellyfin containers. All jobs use Podman as the container runtime.
+The setup deploys:
+- **Consul** - Service discovery and health checking
+- **Nomad** - Container orchestration with Podman driver
+- **CIFS CSI Plugin** - Controller and node plugins for mounting SMB/CIFS network shares
+- **CSI Volumes** - Pre-configured volumes for media and backup storage
+- **Host Volumes** - Local directories for application configuration
 
 ## Quick Start
 
-1. Configure your fileserver and credentials in `ansible/group_vars/all.yml`
+1. Configure your fileserver credentials in `ansible/group_vars/all.yml`
 2. Update `ansible/inventory.ini` with your hosts
 3. Run the ansible playbook:
    ```bash
@@ -16,7 +21,12 @@ The setup uses the SMB CSI driver to mount a network file share containing media
    ansible-playbook -i inventory.ini site.yml
    ```
 
-This deploys Plex by default with automatic version updates and daily backups.
+4. Deploy applications using [nomad-media-packs](https://github.com/brent-holden/nomad-media-packs):
+   ```bash
+   nomad-pack registry add media github.com/brent-holden/nomad-media-packs
+   nomad-pack run plex --registry=media
+   nomad-pack run jellyfin --registry=media
+   ```
 
 ## Configuration
 
@@ -31,40 +41,24 @@ fileserver_username: "plex"
 fileserver_password: "<YOUR-PASSWORD>"
 ```
 
-### Media Server Selection
+### Host Volume Directories
 ```yaml
-media_server: "plex"         # Options: "plex", "jellyfin", or "both"
-plex_gpu_transcoding: true   # Enable GPU passthrough (requires /dev/dri on host)
-enable_updates: true         # Deploy update jobs (check for new versions at 3am)
-enable_backups: true         # Deploy backup jobs (backup configs at 2am)
-```
-
-### Runtime Overrides
-```bash
-# Deploy Jellyfin instead of Plex
-ansible-playbook -i inventory.ini site.yml -e media_server=jellyfin
-
-# Deploy both media servers
-ansible-playbook -i inventory.ini site.yml -e media_server=both
-
-# Deploy Plex without GPU transcoding (no /dev/dri required)
-ansible-playbook -i inventory.ini site.yml -e plex_gpu_transcoding=false
-
-# Deploy without backup jobs
-ansible-playbook -i inventory.ini site.yml -e enable_backups=false
+plex_config_dir: "/opt/plex/config"
+plex_transcode_dir: "/opt/plex/transcode"
+jellyfin_config_dir: "/opt/jellyfin/config"
+jellyfin_cache_dir: "/opt/jellyfin/cache"
 ```
 
 ## Directory Structure
 
 ```
-├── ansible/                # Ansible playbooks for automated setup
+├── ansible/
 │   ├── group_vars/
-│   │   └── all.yml         # Configuration variables
+│   │   └── all.yml              # Configuration variables
 │   ├── playbooks/
 │   │   ├── configure-consul.yml
 │   │   ├── configure-nomad.yml
 │   │   ├── deploy-csi-volumes.yml
-│   │   ├── deploy-media-jobs.yml
 │   │   ├── disable-firewall.yml
 │   │   ├── install-consul.yml
 │   │   ├── install-nomad.yml
@@ -74,47 +68,18 @@ ansible-playbook -i inventory.ini site.yml -e enable_backups=false
 │   │   ├── backup-drive-volume.hcl.j2
 │   │   ├── client.hcl.j2
 │   │   ├── consul.hcl.j2
-│   │   ├── jellyfin-host-volumes.hcl.j2
 │   │   ├── media-drive-volume.hcl.j2
-│   │   ├── plex-host-volumes.hcl.j2
-│   │   ├── plex.nomad.j2
 │   │   ├── podman.hcl.j2
 │   │   └── server.hcl.j2
 │   ├── inventory.ini
 │   └── site.yml
 └── jobs/
-    ├── periodic/           # Scheduled jobs (updates, backups)
-    │   ├── backup-jellyfin.nomad
-    │   ├── backup-plex.nomad
-    │   ├── update-jellyfin.nomad
-    │   └── update-plex.nomad
-    ├── services/           # Media server jobs
-    │   ├── jellyfin.nomad
-    │   └── plex.nomad
-    └── system/             # CSI plugin jobs
+    └── system/
         ├── cifs-csi-plugin-controller.nomad
         └── cifs-csi-plugin-node.nomad
 ```
 
-## Job Descriptions
-
-### Service Jobs
-
-| Job | Description |
-|-----|-------------|
-| `plex.nomad` | Plex Media Server with optional GPU transcoding, media mount, and Consul health checks |
-| `jellyfin.nomad` | Jellyfin Media Server with media mount and Consul health checks |
-
-### Periodic Jobs
-
-| Job | Schedule | Description |
-|-----|----------|-------------|
-| `update-plex.nomad` | 3am daily | Fetches latest Plex version from Plex API and updates Nomad variable |
-| `update-jellyfin.nomad` | 3am daily | Fetches latest Jellyfin version from GitHub and updates Nomad variable |
-| `backup-plex.nomad` | 2am daily | Backs up Plex databases and preferences, keeps 14 days |
-| `backup-jellyfin.nomad` | 2am daily | Backs up Jellyfin data and config, keeps 14 days |
-
-### System Jobs
+## CSI Plugin Jobs
 
 | Job | Description |
 |-----|-------------|
@@ -134,44 +99,48 @@ ansible-playbook -i inventory.ini site.yml -e enable_backups=false
 | `install-podman-driver.yml` | Installs Podman and nomad-driver-podman |
 | `setup-directories.yml` | Creates host volume directories |
 | `deploy-csi-volumes.yml` | Registers CSI volumes for media and backups |
-| `deploy-media-jobs.yml` | Deploys media server, update, and backup jobs |
+
+## CSI Volumes
+
+The playbooks configure two CSI volumes:
+
+| Volume | Purpose |
+|--------|---------|
+| `media-drive` | Shared media library (movies, TV shows, music) |
+| `backup-drive` | Backup storage for application configurations |
+
+## Host Volumes
+
+Host volumes are configured for application-specific persistent storage:
+
+| Volume | Path | Purpose |
+|--------|------|---------|
+| `plex-config` | `/opt/plex/config` | Plex configuration and database |
+| `plex-transcode` | `/opt/plex/transcode` | Temporary transcoding files |
+| `jellyfin-config` | `/opt/jellyfin/config` | Jellyfin configuration and database |
+| `jellyfin-cache` | `/opt/jellyfin/cache` | Jellyfin cache storage |
 
 ## Manual Deployment
 
 If not using Ansible, deploy in this order:
 
-1. **Deploy CSI plugins:**
+1. **Install and configure Consul and Nomad** on all nodes
+
+2. **Deploy CSI plugins:**
    ```bash
    nomad job run jobs/system/cifs-csi-plugin-controller.nomad
    nomad job run jobs/system/cifs-csi-plugin-node.nomad
    ```
 
-2. **Register CSI volumes** (use ansible templates as reference):
+3. **Register CSI volumes** (create HCL files based on templates):
    ```bash
-   cd ansible
-   ansible-playbook -i inventory.ini playbooks/deploy-csi-volumes.yml
+   nomad volume register media-drive-volume.hcl
+   nomad volume register backup-drive-volume.hcl
    ```
 
-3. **Set up Plex variables** (if running Plex):
-   ```bash
-   nomad var put nomad/jobs/plex claim_token="<YOUR-CLAIM-TOKEN>" version="latest"
-   ```
-   See [Finding an authentication token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) for how to obtain your claim token.
+4. **Create host volume directories** on each Nomad client
 
-4. **Deploy media server:**
-   ```bash
-   # Plex (requires /dev/dri for GPU transcoding, or edit the job file)
-   nomad job run jobs/services/plex.nomad
-   nomad job run jobs/periodic/update-plex.nomad
-   nomad job run jobs/periodic/backup-plex.nomad
-
-   # Or Jellyfin
-   nomad job run jobs/services/jellyfin.nomad
-   nomad job run jobs/periodic/update-jellyfin.nomad
-   nomad job run jobs/periodic/backup-jellyfin.nomad
-   ```
-
-   > **Note:** The static `plex.nomad` includes GPU passthrough. For hosts without `/dev/dri`, use ansible with `-e plex_gpu_transcoding=false` or manually remove the `devices` line from the job file.
+5. **Deploy applications** using [nomad-media-packs](https://github.com/brent-holden/nomad-media-packs)
 
 ## Manual Infrastructure Setup
 
@@ -203,15 +172,15 @@ If not using Ansible, complete the following on each node:
    sudo ln -s /usr/bin/nomad-driver-podman /opt/nomad/plugins/
    ```
 
-6. **Create directories** (for Plex):
+6. **Create host volume directories**:
    ```bash
+   # For Plex
    sudo groupadd -g 1001 plex
    sudo useradd -u 1002 -g plex -s /sbin/nologin -M plex
    sudo mkdir -p /opt/plex/config /opt/plex/transcode
    sudo chown -R plex:plex /opt/plex
-   ```
-   Or for Jellyfin:
-   ```bash
+
+   # For Jellyfin
    sudo mkdir -p /opt/jellyfin/config /opt/jellyfin/cache
    ```
 
@@ -222,28 +191,27 @@ If not using Ansible, complete the following on each node:
    sudo systemctl enable --now nomad
    ```
 
-## Nomad Pack Registry
+## Deploying Media Servers
 
-For a more flexible deployment approach, see the [nomad-media-packs](https://github.com/brent-holden/nomad-media-packs) registry. It provides Nomad Pack templates for Plex and Jellyfin with configurable backup and update jobs.
+After the infrastructure is set up, use [nomad-media-packs](https://github.com/brent-holden/nomad-media-packs) to deploy media servers:
 
 ```bash
 # Add the registry
 nomad-pack registry add media github.com/brent-holden/nomad-media-packs
 
-# Deploy Plex with all features
+# Deploy Plex (with GPU transcoding, backup, and update jobs)
 nomad-pack run plex --registry=media
 
-# Deploy Jellyfin
+# Deploy Jellyfin (with GPU transcoding, backup, and update jobs)
 nomad-pack run jellyfin --registry=media
-```
 
-The Nomad Pack approach is useful when you already have CSI volumes configured and want a quick way to deploy media servers with customizable variables.
+# View available options
+nomad-pack info plex --registry=media
+nomad-pack info jellyfin --registry=media
+```
 
 ## Notes
 
-- Both media servers are configured with 16GB RAM and 16 CPU cores
 - The SMB share is mounted with UID 1002 and GID 1001 to match the Plex user
-- Timezone is set to America/New_York for all scheduled jobs
-- Backups are stored for 14 days before automatic cleanup
-- GPU transcoding for Plex requires `/dev/dri` on the host; disable with `plex_gpu_transcoding=false` for software transcoding
-- **Performance Warning:** Running both Plex and Jellyfin simultaneously against the same CIFS/SMB mount point may cause performance issues. It is recommended to run only one media server at a time.
+- Host volumes provide persistent local storage for application configuration
+- CSI volumes enable shared network storage across multiple nodes

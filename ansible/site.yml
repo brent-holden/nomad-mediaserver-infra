@@ -1,25 +1,19 @@
 ---
-# Main playbook to set up complete Nomad media server infrastructure
+# Main playbook to set up Nomad infrastructure with CIFS/SMB CSI plugin
 #
 # Usage:
-#   Deploy Plex (default): ansible-playbook -i inventory.ini site.yml
-#   Deploy Jellyfin:       ansible-playbook -i inventory.ini site.yml -e media_server=jellyfin
-#   Deploy both:           ansible-playbook -i inventory.ini site.yml -e media_server=both
+#   ansible-playbook -i inventory.ini site.yml
 #
-# Optional flags (default: true):
-#   -e enable_updates=false  Skip deploying update jobs
-#   -e enable_backups=false  Skip deploying backup jobs
-
-- name: Validate configuration
-  hosts: localhost
-  gather_facts: false
-  tasks:
-    - name: Validate media_server value
-      ansible.builtin.assert:
-        that:
-          - media_server in ['plex', 'jellyfin', 'both']
-        fail_msg: "media_server must be 'plex', 'jellyfin', or 'both'. Got: {{ media_server }}"
-        success_msg: "Deploying media server(s): {{ media_server }}"
+# This playbook sets up:
+#   - Consul for service discovery
+#   - Nomad cluster with Podman driver
+#   - CIFS/SMB CSI plugin for network storage
+#   - CSI volumes for media and backup storage
+#
+# After running this playbook, deploy media servers using nomad-pack:
+#   nomad-pack registry add media github.com/brent-holden/nomad-media-packs
+#   nomad-pack run plex --registry=media
+#   nomad-pack run jellyfin --registry=media
 
 - name: Disable Firewall
   ansible.builtin.import_playbook: playbooks/disable-firewall.yml
@@ -44,6 +38,3 @@
 
 - name: Deploy CSI Volumes
   ansible.builtin.import_playbook: playbooks/deploy-csi-volumes.yml
-
-- name: Deploy Media Server Jobs
-  ansible.builtin.import_playbook: playbooks/deploy-media-jobs.yml

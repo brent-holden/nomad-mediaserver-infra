@@ -1,5 +1,5 @@
 ---
-# Fileserver configuration
+# Fileserver configuration for CIFS/SMB volumes
 fileserver_ip: "10.100.0.1"
 fileserver_media_share: "media"
 fileserver_backup_share: "backups"
@@ -16,25 +16,13 @@ nomad_data_dir: "/opt/nomad/data"
 nomad_config_dir: "/etc/nomad.d"
 nomad_plugin_dir: "/opt/nomad/plugins"
 
-# Host volume directories
+# Host volume directories for media servers
+# These directories will be created and configured as Nomad host volumes
 plex_config_dir: "/opt/plex/config"
 plex_transcode_dir: "/opt/plex/transcode"
 jellyfin_config_dir: "/opt/jellyfin/config"
 jellyfin_cache_dir: "/opt/jellyfin/cache"
 
-# Plex user configuration (must match PLEX_UID/PLEX_GID in plex.nomad)
+# Plex user configuration (used for directory ownership and volume permissions)
 plex_uid: 1002
 plex_gid: 1001
-
-# Media server selection: "plex", "jellyfin", or "both"
-# Override at runtime with: ansible-playbook -i inventory.ini site.yml -e media_server=both
-media_server: "plex"
-
-# Enable GPU passthrough for Plex hardware transcoding (requires /dev/dri on host)
-plex_gpu_transcoding: true
-
-# Deploy update jobs (check for new versions daily at 3am)
-enable_updates: true
-
-# Deploy backup jobs (backup configs daily at 2am, requires backup-drive CSI volume)
-enable_backups: true
