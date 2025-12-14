@@ -1,7 +1,7 @@
 # This job runs the node service for the SMB CSI plugin.
 # The node plugin is responsible for mounting volumes on the host.
 job "cifs-csi-plugin-node" {
-  datacenters = ["dc1"]
+  datacenters = ["{{ consul_datacenter }}"]
   type        = "system"
 
   # The nodes group runs the plugin on all client nodes.
@@ -10,13 +10,13 @@ job "cifs-csi-plugin-node" {
       driver = "podman"
 
       config {
-        image = "mcr.microsoft.com/k8s/csi/smb-csi:v1.17.0"
+        image = "{{ csi_smb_image }}"
 
         args = [
-          "--v=5",
+          "--v={{ csi_log_level }}",
           "--nodeid=${node.unique.id}",
           "--endpoint=unix:///csi/csi.sock",
-          "--drivername=smb.csi.k8s.io",
+          "--drivername={{ csi_driver_name }}",
         ]
 
         privileged   = true
@@ -26,15 +26,15 @@ job "cifs-csi-plugin-node" {
 
       # This stanza configures the task as a CSI plugin node service.
       csi_plugin {
-        id                     = "smb"
+        id                     = "{{ csi_plugin_id }}"
         type                   = "node"
         mount_dir              = "/csi"
         stage_publish_base_dir = "/local/csi"
       }
 
       resources {
-        cpu    = 512
-        memory = 512
+        cpu    = {{ csi_node_cpu }}
+        memory = {{ csi_node_memory }}
       }
     }
   }

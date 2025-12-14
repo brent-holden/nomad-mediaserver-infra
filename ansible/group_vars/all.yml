@@ -26,3 +26,13 @@ jellyfin_cache_dir: "/opt/jellyfin/cache"
 # Plex user configuration (used for directory ownership and volume permissions)
 plex_uid: 1002
 plex_gid: 1001
+
+# CSI Plugin configuration
+csi_smb_image: "mcr.microsoft.com/k8s/csi/smb-csi:v1.17.0"
+csi_plugin_id: "smb"
+csi_driver_name: "smb.csi.k8s.io"
+csi_log_level: 5
+csi_controller_cpu: 512
+csi_controller_memory: 512
+csi_node_cpu: 512
+csi_node_memory: 512

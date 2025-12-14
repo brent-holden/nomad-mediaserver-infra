@@ -1,7 +1,7 @@
 # This job runs the controller service for the SMB CSI plugin.
 # The controller is responsible for managing volumes (create, delete, etc.).
 job "cifs-csi-plugin-controller" {
-  datacenters = ["dc1"]
+  datacenters = ["{{ consul_datacenter }}"]
   type        = "service"
 
   # The controller group runs a single instance of the plugin.
@@ -12,27 +12,27 @@ job "cifs-csi-plugin-controller" {
       driver = "podman"
 
       config {
-        image = "mcr.microsoft.com/k8s/csi/smb-csi:v1.17.0"
-        
+        image = "{{ csi_smb_image }}"
+
         args = [
-          "--v=5",
+          "--v={{ csi_log_level }}",
           "--nodeid=${node.unique.id}",
           "--endpoint=unix:///csi/csi.sock",
-          "--drivername=smb.csi.k8s.io",
+          "--drivername={{ csi_driver_name }}",
         ]
 
       }
 
       # This stanza configures the task as a CSI plugin controller.
       csi_plugin {
-        id   = "smb"
-        type = "controller"
+        id        = "{{ csi_plugin_id }}"
+        type      = "controller"
         mount_dir = "/csi"
       }
 
       resources {
-        memory = 512
-        cpu = 512
+        memory = {{ csi_controller_memory }}
+        cpu    = {{ csi_controller_cpu }}
       }
     }
   }

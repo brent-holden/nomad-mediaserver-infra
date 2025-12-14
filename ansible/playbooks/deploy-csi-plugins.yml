@@ -1,0 +1,57 @@
+---
+# Deploy CIFS/SMB CSI plugins to Nomad
+#
+# This playbook deploys the CSI controller and node plugins required
+# for mounting CIFS/SMB network shares as Nomad volumes.
+
+- name: Deploy CSI Plugins
+  hosts: nomad_servers[0]
+  gather_facts: false
+  tasks:
+    - name: Create temporary directory for job files
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: nomad_csi_
+      register: temp_dir
+
+    - name: Template CSI controller job
+      ansible.builtin.template:
+        src: ../templates/cifs-csi-plugin-controller.nomad.j2
+        dest: "{{ temp_dir.path }}/cifs-csi-plugin-controller.nomad"
+        mode: '0644'
+
+    - name: Template CSI node job
+      ansible.builtin.template:
+        src: ../templates/cifs-csi-plugin-node.nomad.j2
+        dest: "{{ temp_dir.path }}/cifs-csi-plugin-node.nomad"
+        mode: '0644'
+
+    - name: Deploy CSI controller plugin
+      ansible.builtin.command:
+        cmd: nomad job run {{ temp_dir.path }}/cifs-csi-plugin-controller.nomad
+      register: controller_result
+      changed_when: "'created' in controller_result.stdout or 'modified' in controller_result.stdout"
+
+    - name: Deploy CSI node plugin
+      ansible.builtin.command:
+        cmd: nomad job run {{ temp_dir.path }}/cifs-csi-plugin-node.nomad
+      register: node_result
+      changed_when: "'created' in node_result.stdout or 'modified' in node_result.stdout"
+
+    - name: Wait for CSI plugins to be healthy
+      ansible.builtin.command:
+        cmd: nomad plugin status {{ csi_plugin_id }}
+      register: plugin_status
+      until: "'Nodes Healthy' in plugin_status.stdout"
+      retries: 30
+      delay: 5
+      changed_when: false
+
+    - name: Display plugin status
+      ansible.builtin.debug:
+        var: plugin_status.stdout_lines
+
+    - name: Clean up temporary directory
+      ansible.builtin.file:
+        path: "{{ temp_dir.path }}"
+        state: absent

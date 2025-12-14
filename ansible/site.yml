@@ -36,5 +36,8 @@
 - name: Setup Host Volume Directories
   ansible.builtin.import_playbook: playbooks/setup-directories.yml
 
+- name: Deploy CSI Plugins
+  ansible.builtin.import_playbook: playbooks/deploy-csi-plugins.yml
+
 - name: Deploy CSI Volumes
   ansible.builtin.import_playbook: playbooks/deploy-csi-volumes.yml

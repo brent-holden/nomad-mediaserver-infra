@@ -1,6 +1,6 @@
 # Nomad CIFS/SMB CSI Infrastructure
 
-This repository contains Ansible playbooks and Nomad job specifications for setting up a CIFS/SMB CSI (Container Storage Interface) plugin on HashiCorp Nomad. It provides the infrastructure foundation for running containerized applications with shared network storage.
+This repository contains Ansible playbooks for setting up a CIFS/SMB CSI (Container Storage Interface) plugin on HashiCorp Nomad. It provides the infrastructure foundation for running containerized applications with shared network storage.
 
 ## Overview
 
@@ -41,6 +41,18 @@ fileserver_username: "plex"
 fileserver_password: "<YOUR-PASSWORD>"
 ```
 
+### CSI Plugin Settings
+```yaml
+csi_smb_image: "mcr.microsoft.com/k8s/csi/smb-csi:v1.17.0"
+csi_plugin_id: "smb"
+csi_driver_name: "smb.csi.k8s.io"
+csi_log_level: 5
+csi_controller_cpu: 512
+csi_controller_memory: 512
+csi_node_cpu: 512
+csi_node_memory: 512
+```
+
 ### Host Volume Directories
 ```yaml
 plex_config_dir: "/opt/plex/config"
@@ -52,39 +64,31 @@ jellyfin_cache_dir: "/opt/jellyfin/cache"
 ## Directory Structure
 
 ```
-├── ansible/
-│   ├── group_vars/
-│   │   └── all.yml              # Configuration variables
-│   ├── playbooks/
-│   │   ├── configure-consul.yml
-│   │   ├── configure-nomad.yml
-│   │   ├── deploy-csi-volumes.yml
-│   │   ├── disable-firewall.yml
-│   │   ├── install-consul.yml
-│   │   ├── install-nomad.yml
-│   │   ├── install-podman-driver.yml
-│   │   └── setup-directories.yml
-│   ├── templates/
-│   │   ├── backup-drive-volume.hcl.j2
-│   │   ├── client.hcl.j2
-│   │   ├── consul.hcl.j2
-│   │   ├── media-drive-volume.hcl.j2
-│   │   ├── podman.hcl.j2
-│   │   └── server.hcl.j2
-│   ├── inventory.ini
-│   └── site.yml
-└── jobs/
-    └── system/
-        ├── cifs-csi-plugin-controller.nomad
-        └── cifs-csi-plugin-node.nomad
+ansible/
+├── group_vars/
+│   └── all.yml                  # Configuration variables
+├── playbooks/
+│   ├── configure-consul.yml
+│   ├── configure-nomad.yml
+│   ├── deploy-csi-plugins.yml   # Deploys CSI controller and node plugins
+│   ├── deploy-csi-volumes.yml   # Registers CSI volumes
+│   ├── disable-firewall.yml
+│   ├── install-consul.yml
+│   ├── install-nomad.yml
+│   ├── install-podman-driver.yml
+│   └── setup-directories.yml
+├── templates/
+│   ├── backup-drive-volume.hcl.j2
+│   ├── cifs-csi-plugin-controller.nomad.j2
+│   ├── cifs-csi-plugin-node.nomad.j2
+│   ├── client.hcl.j2
+│   ├── consul.hcl.j2
+│   ├── media-drive-volume.hcl.j2
+│   ├── podman.hcl.j2
+│   └── server.hcl.j2
+├── inventory.ini
+└── site.yml
 ```
-
-## CSI Plugin Jobs
-
-| Job | Description |
-|-----|-------------|
-| `cifs-csi-plugin-controller.nomad` | SMB CSI controller for volume lifecycle management |
-| `cifs-csi-plugin-node.nomad` | SMB CSI node plugin for mounting volumes on hosts |
 
 ## Ansible Playbooks
 
@@ -98,7 +102,17 @@ jellyfin_cache_dir: "/opt/jellyfin/cache"
 | `configure-nomad.yml` | Deploys Nomad server and client configuration |
 | `install-podman-driver.yml` | Installs Podman and nomad-driver-podman |
 | `setup-directories.yml` | Creates host volume directories |
+| `deploy-csi-plugins.yml` | Deploys CSI controller and node plugins |
 | `deploy-csi-volumes.yml` | Registers CSI volumes for media and backups |
+
+## CSI Plugins
+
+The playbooks deploy two CSI plugin jobs:
+
+| Job | Type | Description |
+|-----|------|-------------|
+| `cifs-csi-plugin-controller` | service | Volume lifecycle management (create, delete) |
+| `cifs-csi-plugin-node` | system | Mounts volumes on each Nomad client node |
 
 ## CSI Volumes
 
@@ -119,28 +133,6 @@ Host volumes are configured for application-specific persistent storage:
 | `plex-transcode` | `/opt/plex/transcode` | Temporary transcoding files |
 | `jellyfin-config` | `/opt/jellyfin/config` | Jellyfin configuration and database |
 | `jellyfin-cache` | `/opt/jellyfin/cache` | Jellyfin cache storage |
-
-## Manual Deployment
-
-If not using Ansible, deploy in this order:
-
-1. **Install and configure Consul and Nomad** on all nodes
-
-2. **Deploy CSI plugins:**
-   ```bash
-   nomad job run jobs/system/cifs-csi-plugin-controller.nomad
-   nomad job run jobs/system/cifs-csi-plugin-node.nomad
-   ```
-
-3. **Register CSI volumes** (create HCL files based on templates):
-   ```bash
-   nomad volume register media-drive-volume.hcl
-   nomad volume register backup-drive-volume.hcl
-   ```
-
-4. **Create host volume directories** on each Nomad client
-
-5. **Deploy applications** using [nomad-media-packs](https://github.com/brent-holden/nomad-media-packs)
 
 ## Manual Infrastructure Setup
 
@@ -191,6 +183,16 @@ If not using Ansible, complete the following on each node:
    sudo systemctl enable --now nomad
    ```
 
+9. **Deploy CSI plugins** (generate from templates or use ansible):
+   ```bash
+   ansible-playbook -i inventory.ini playbooks/deploy-csi-plugins.yml
+   ```
+
+10. **Register CSI volumes**:
+    ```bash
+    ansible-playbook -i inventory.ini playbooks/deploy-csi-volumes.yml
+    ```
+
 ## Deploying Media Servers
 
 After the infrastructure is set up, use [nomad-media-packs](https://github.com/brent-holden/nomad-media-packs) to deploy media servers:
@@ -212,6 +214,7 @@ nomad-pack info jellyfin --registry=media
 
 ## Notes
 
+- All configuration is managed through `ansible/group_vars/all.yml`
 - The SMB share is mounted with UID 1002 and GID 1001 to match the Plex user
 - Host volumes provide persistent local storage for application configuration
 - CSI volumes enable shared network storage across multiple nodes
