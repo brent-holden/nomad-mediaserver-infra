@@ -9,9 +9,9 @@
 #   Without GPU transcoding:  ansible-playbook -i inventory.ini playbooks/deploy-media-server.yml -e media_server_gpu_transcoding=false
 
 - name: Deploy Media Server
-  hosts: nomad_servers[0]
+  hosts: controller
   gather_facts: true
-  become: true
+  become: false
   tasks:
     - name: Validate media_server value
       ansible.builtin.assert:
@@ -119,18 +119,20 @@
     - name: Check if Nomad Pack registry exists
       ansible.builtin.command:
         cmd: nomad-pack registry list
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       register: registry_list
       changed_when: false
       failed_when: false
-      become: false
 
     - name: Add Nomad Pack registry
       ansible.builtin.command:
         cmd: nomad-pack registry add {{ nomad_pack_registry_name }} {{ nomad_pack_registry_url }}
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       when: nomad_pack_registry_name not in registry_list.stdout
       register: registry_add
       changed_when: "'added' in registry_add.stdout"
-      become: false
 
     - name: Build nomad-pack variables
       ansible.builtin.set_fact:
@@ -142,9 +144,10 @@
     - name: Deploy {{ media_server }} with Nomad Pack
       ansible.builtin.command:
         cmd: nomad-pack run {{ media_server }} --registry={{ nomad_pack_registry_name }} {{ pack_vars }}
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       register: pack_result
       changed_when: "'deployed' in pack_result.stdout or 'Plan' in pack_result.stdout"
-      become: false
 
     - name: Display deployment result
       ansible.builtin.debug:
@@ -153,13 +156,14 @@
     - name: Verify job is running
       ansible.builtin.command:
         cmd: nomad job status {{ media_server }}
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       register: job_status
       until: "'running' in job_status.stdout"
       retries: 30
       delay: 5
       changed_when: false
-      become: false
 
     - name: Display job status
       ansible.builtin.debug:
-        msg: "{{ media_server }} is now running. Access at http://<nomad-client-ip>:{{ '32400' if media_server == 'plex' else '8096' }}"
+        msg: "{{ media_server }} is now running. Access at http://192.168.0.10:{{ '32400' if media_server == 'plex' else '8096' }}"

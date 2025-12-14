@@ -12,6 +12,7 @@ consul_config_dir: "/etc/consul.d"
 consul_datacenter: "dc1"
 
 # Nomad configuration
+nomad_addr: "http://192.168.0.10:4646"
 nomad_data_dir: "/opt/nomad/data"
 nomad_config_dir: "/etc/nomad.d"
 nomad_plugin_dir: "/opt/nomad/plugins"

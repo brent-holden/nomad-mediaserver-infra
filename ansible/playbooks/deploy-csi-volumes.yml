@@ -1,8 +1,8 @@
 ---
 # Playbook to deploy CSI volumes for media and backup storage
 - name: Deploy CSI Volumes
-  hosts: nomad_servers[0]
-  become: true
+  hosts: controller
+  gather_facts: false
 
   tasks:
     - name: Create temporary directory for volume configs
@@ -27,6 +27,8 @@
     - name: Register media-drive volume
       ansible.builtin.command:
         cmd: nomad volume register {{ temp_dir.path }}/media-drive-volume.hcl
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       register: media_volume
       changed_when: "'registered' in media_volume.stdout"
       failed_when: media_volume.rc != 0 and 'exists' not in media_volume.stderr
@@ -34,6 +36,8 @@
     - name: Register backup-drive volume
       ansible.builtin.command:
         cmd: nomad volume register {{ temp_dir.path }}/backup-drive-volume.hcl
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       register: backup_volume
       changed_when: "'registered' in backup_volume.stdout"
       failed_when: backup_volume.rc != 0 and 'exists' not in backup_volume.stderr

@@ -12,6 +12,15 @@ The setup deploys:
 - **Host Volumes** - Local directories for application configuration
 - **Media Server** - Plex or Jellyfin via Nomad Pack
 
+## Architecture
+
+This setup uses a **controller-based deployment model**:
+
+- **Controller** (macOS workstation at `localhost`) - Runs Ansible and Nomad CLI commands
+- **Target** (Linux server at `192.168.0.10`) - Runs Consul, Nomad, and containers
+
+The controller uses `NOMAD_ADDR` to submit jobs to the remote Nomad cluster.
+
 ## Prerequisites
 
 Before using this repository, you must have a NAS (Network Attached Storage) configured with the following SMB/CIFS shares:
@@ -60,6 +69,14 @@ media_server: "plex"
 media_server_gpu_transcoding: true
 media_server_enable_backup: true
 media_server_enable_update: true
+```
+
+### Nomad Settings
+```yaml
+nomad_addr: "http://192.168.0.10:4646"
+nomad_data_dir: "/opt/nomad/data"
+nomad_config_dir: "/etc/nomad.d"
+nomad_plugin_dir: "/opt/nomad/plugins"
 ```
 
 ### CSI Plugin Settings

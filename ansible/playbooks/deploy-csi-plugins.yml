@@ -5,7 +5,7 @@
 # for mounting CIFS/SMB network shares as Nomad volumes.
 
 - name: Deploy CSI Plugins
-  hosts: nomad_servers[0]
+  hosts: controller
   gather_facts: false
   tasks:
     - name: Create temporary directory for job files
@@ -29,18 +29,24 @@
     - name: Deploy CSI controller plugin
       ansible.builtin.command:
         cmd: nomad job run {{ temp_dir.path }}/cifs-csi-plugin-controller.nomad
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       register: controller_result
       changed_when: "'created' in controller_result.stdout or 'modified' in controller_result.stdout"
 
     - name: Deploy CSI node plugin
       ansible.builtin.command:
         cmd: nomad job run {{ temp_dir.path }}/cifs-csi-plugin-node.nomad
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       register: node_result
       changed_when: "'created' in node_result.stdout or 'modified' in node_result.stdout"
 
     - name: Wait for CSI plugins to be healthy
       ansible.builtin.command:
         cmd: nomad plugin status {{ csi_plugin_id }}
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
       register: plugin_status
       until: "'Nodes Healthy' in plugin_status.stdout"
       retries: 30

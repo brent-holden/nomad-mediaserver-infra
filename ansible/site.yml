@@ -19,7 +19,7 @@
 #   - Media server (Plex or Jellyfin) via Nomad Pack
 
 - name: Validate configuration
-  hosts: localhost
+  hosts: controller
   gather_facts: false
   tasks:
     - name: Validate media_server value
