@@ -43,7 +43,7 @@ media_server: "plex"
 
 # Nomad Pack registry configuration
 nomad_pack_registry_name: "media"
-nomad_pack_registry_url: "github.com/brent-holden/nomad-media-packs"
+nomad_pack_registry_url: "github.com/brent-holden/nomad-mediaserver-packs"
 
 # Media server pack variables (passed to nomad-pack)
 media_server_gpu_transcoding: true
