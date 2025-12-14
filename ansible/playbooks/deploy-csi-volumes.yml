@@ -1,0 +1,54 @@
+---
+# Playbook to deploy CSI volumes for media and backup storage
+- name: Deploy CSI Volumes
+  hosts: nomad_servers[0]
+  become: true
+
+  tasks:
+    - name: Create temporary directory for volume configs
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: nomad-volumes
+      register: temp_dir
+
+    - name: Generate media-drive volume configuration
+      ansible.builtin.template:
+        src: ../templates/media-drive-volume.hcl.j2
+        dest: "{{ temp_dir.path }}/media-drive-volume.hcl"
+        mode: "0600"
+
+    - name: Generate backup-drive volume configuration
+      ansible.builtin.template:
+        src: ../templates/backup-drive-volume.hcl.j2
+        dest: "{{ temp_dir.path }}/backup-drive-volume.hcl"
+        mode: "0600"
+      when: enable_backups | default(true) | bool
+
+    - name: Register media-drive volume
+      ansible.builtin.command:
+        cmd: nomad volume register {{ temp_dir.path }}/media-drive-volume.hcl
+      register: media_volume
+      changed_when: "'registered' in media_volume.stdout"
+      failed_when: media_volume.rc != 0 and 'exists' not in media_volume.stderr
+
+    - name: Register backup-drive volume
+      ansible.builtin.command:
+        cmd: nomad volume register {{ temp_dir.path }}/backup-drive-volume.hcl
+      register: backup_volume
+      changed_when: "'registered' in backup_volume.stdout"
+      failed_when: backup_volume.rc != 0 and 'exists' not in backup_volume.stderr
+      when: enable_backups | default(true) | bool
+
+    - name: Clean up temporary directory
+      ansible.builtin.file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+
+    - name: Show registered volumes
+      ansible.builtin.debug:
+        msg: |
+          Registered CSI volumes:
+          - media-drive (//{{ fileserver_ip }}/{{ fileserver_media_share }})
+          {% if enable_backups | default(true) | bool %}
+          - backup-drive (//{{ fileserver_ip }}/{{ fileserver_backup_share }})
+          {% endif %}

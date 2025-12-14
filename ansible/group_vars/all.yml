@@ -1,4 +1,11 @@
 ---
+# Fileserver configuration
+fileserver_ip: "10.100.0.1"
+fileserver_media_share: "media"
+fileserver_backup_share: "backups"
+fileserver_username: "plex"
+fileserver_password: "<SECRET HERE>"
+
 # Consul configuration
 consul_data_dir: "/opt/consul/data"
 consul_config_dir: "/etc/consul.d"
@@ -22,3 +29,9 @@ plex_gid: 1001
 # Media server selection: "plex", "jellyfin", or "both"
 # Override at runtime with: ansible-playbook -i inventory.ini site.yml -e media_server=both
 media_server: "plex"
+
+# Deploy update jobs (check for new versions daily at 3am)
+enable_updates: true
+
+# Deploy backup jobs (backup configs daily at 2am, requires backup-drive CSI volume)
+enable_backups: true

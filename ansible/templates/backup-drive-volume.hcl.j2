@@ -1,0 +1,23 @@
+id        = "backup-drive"
+name      = "backup-drive"
+type      = "csi"
+plugin_id = "smb"
+
+capability {
+  access_mode     = "multi-node-multi-writer"
+  attachment_mode = "file-system"
+}
+
+mount_options {
+  fs_type = "cifs"
+  mount_flags = ["uid={{ plex_uid }}", "gid={{ plex_gid }}", "file_mode=0644", "dir_mode=0755", "vers=3.0"]
+}
+
+secrets {
+  username = "{{ fileserver_username }}"
+  password = "{{ fileserver_password }}"
+}
+
+context {
+  source = "//{{ fileserver_ip }}/{{ fileserver_backup_share }}"
+}

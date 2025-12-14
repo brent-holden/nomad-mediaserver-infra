@@ -21,7 +21,14 @@
         cmd: nomad job run {{ jobs_dir }}/periodic/update-plex.nomad
       register: plex_update_job
       changed_when: "'Job registration successful' in plex_update_job.stdout"
-      when: media_server == "plex" or media_server == "both"
+      when: (media_server == "plex" or media_server == "both") and enable_updates | default(true) | bool
+
+    - name: Deploy Plex backup job
+      ansible.builtin.command:
+        cmd: nomad job run {{ jobs_dir }}/periodic/backup-plex.nomad
+      register: plex_backup_job
+      changed_when: "'Job registration successful' in plex_backup_job.stdout"
+      when: (media_server == "plex" or media_server == "both") and enable_backups | default(true) | bool
 
     # Deploy Jellyfin jobs
     - name: Deploy Jellyfin service job
@@ -36,7 +43,14 @@
         cmd: nomad job run {{ jobs_dir }}/periodic/update-jellyfin.nomad
       register: jellyfin_update_job
       changed_when: "'Job registration successful' in jellyfin_update_job.stdout"
-      when: media_server == "jellyfin" or media_server == "both"
+      when: (media_server == "jellyfin" or media_server == "both") and enable_updates | default(true) | bool
+
+    - name: Deploy Jellyfin backup job
+      ansible.builtin.command:
+        cmd: nomad job run {{ jobs_dir }}/periodic/backup-jellyfin.nomad
+      register: jellyfin_backup_job
+      changed_when: "'Job registration successful' in jellyfin_backup_job.stdout"
+      when: (media_server == "jellyfin" or media_server == "both") and enable_backups | default(true) | bool
 
     # Display results
     - name: Show deployed jobs
@@ -45,9 +59,19 @@
           Deployed jobs for media_server={{ media_server }}:
           {% if media_server == "plex" or media_server == "both" %}
           - plex (service)
+          {% if enable_updates | default(true) | bool %}
           - update-plex (periodic)
+          {% endif %}
+          {% if enable_backups | default(true) | bool %}
+          - backup-plex (periodic)
+          {% endif %}
           {% endif %}
           {% if media_server == "jellyfin" or media_server == "both" %}
           - jellyfin (service)
+          {% if enable_updates | default(true) | bool %}
           - update-jellyfin (periodic)
+          {% endif %}
+          {% if enable_backups | default(true) | bool %}
+          - backup-jellyfin (periodic)
+          {% endif %}
           {% endif %}
