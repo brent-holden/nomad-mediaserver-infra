@@ -222,6 +222,23 @@ If not using Ansible, complete the following on each node:
    sudo systemctl enable --now nomad
    ```
 
+## Nomad Pack Registry
+
+For a more flexible deployment approach, see the [nomad-media-packs](https://github.com/brent-holden/nomad-media-packs) registry. It provides Nomad Pack templates for Plex and Jellyfin with configurable backup and update jobs.
+
+```bash
+# Add the registry
+nomad-pack registry add media github.com/brent-holden/nomad-media-packs
+
+# Deploy Plex with all features
+nomad-pack run plex --registry=media
+
+# Deploy Jellyfin
+nomad-pack run jellyfin --registry=media
+```
+
+The Nomad Pack approach is useful when you already have CSI volumes configured and want a quick way to deploy media servers with customizable variables.
+
 ## Notes
 
 - Both media servers are configured with 16GB RAM and 16 CPU cores
