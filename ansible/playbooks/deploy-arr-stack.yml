@@ -8,13 +8,14 @@
 #   - Prowlarr (indexer management)
 #   - Overseerr (request management)
 #   - Tautulli (Plex monitoring)
+#   - SABnzbd (Usenet download client)
 #
 # Usage:
 #   Deploy all services:
 #     ansible-playbook -i inventory.ini playbooks/deploy-arr-stack.yml
 #
 #   Deploy specific services:
-#     ansible-playbook -i inventory.ini playbooks/deploy-arr-stack.yml -e "arr_services=['radarr','sonarr']"
+#     ansible-playbook -i inventory.ini playbooks/deploy-arr-stack.yml -e "arr_services=['radarr','sonarr','sabnzbd']"
 #
 #   Without backups:
 #     ansible-playbook -i inventory.ini playbooks/deploy-arr-stack.yml -e arr_enable_backup=false
@@ -31,6 +32,7 @@
       - prowlarr
       - overseerr
       - tautulli
+      - sabnzbd
     # Pack variables
     arr_enable_backup: true
     arr_enable_update: true
@@ -39,8 +41,8 @@
       ansible.builtin.assert:
         that:
           - arr_services | length > 0
-          - arr_services | difference(['radarr', 'sonarr', 'lidarr', 'prowlarr', 'overseerr', 'tautulli']) | length == 0
-        fail_msg: "arr_services must contain valid service names: radarr, sonarr, lidarr, prowlarr, overseerr, tautulli"
+          - arr_services | difference(['radarr', 'sonarr', 'lidarr', 'prowlarr', 'overseerr', 'tautulli', 'sabnzbd']) | length == 0
+        fail_msg: "arr_services must contain valid service names: radarr, sonarr, lidarr, prowlarr, overseerr, tautulli, sabnzbd"
         success_msg: "Will deploy services: {{ arr_services | join(', ') }}"
 
     # Check Nomad Pack is installed
@@ -174,6 +176,9 @@
           {% endif %}
           {% if 'tautulli' in arr_services %}
             - Tautulli:  http://192.168.0.10:8181
+          {% endif %}
+          {% if 'sabnzbd' in arr_services %}
+            - SABnzbd:   http://192.168.0.10:8080
           {% endif %}
 
           Next steps:

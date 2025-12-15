@@ -92,6 +92,7 @@ Configure your NAS with SMB/CIFS shares:
    | Prowlarr | http://192.168.0.10:9696 |
    | Overseerr | http://192.168.0.10:5055 |
    | Tautulli | http://192.168.0.10:8181 |
+   | SABnzbd | http://192.168.0.10:8080 |
 
 ## Playbooks
 
@@ -253,6 +254,7 @@ When jobs request host volumes, Nomad creates them on-demand with the specified 
 | `prowlarr-config` | Prowlarr configuration and database | `deploy-arr-stack.yml` |
 | `overseerr-config` | Overseerr configuration and database | `deploy-arr-stack.yml` |
 | `tautulli-config` | Tautulli configuration and database | `deploy-arr-stack.yml` |
+| `sabnzbd-config` | SABnzbd configuration and database | `deploy-arr-stack.yml` |
 
 **Access Mode:** Host volumes are created with `single-node-multi-writer` access mode, which allows the backup and restore jobs to access the config volume while the main service is running.
 
@@ -281,6 +283,7 @@ Each *arr service creates multiple jobs:
 | Prowlarr | `prowlarr` | `prowlarr-backup` | `prowlarr-update` |
 | Overseerr | `overseerr` | `overseerr-backup` | `overseerr-update` |
 | Tautulli | `tautulli` | `tautulli-backup` | `tautulli-update` |
+| SABnzbd | `sabnzbd` | `sabnzbd-backup` | `sabnzbd-update` |
 
 ## *arr Stack Setup
 
@@ -288,10 +291,11 @@ After deploying the *arr stack, configure the services to work together:
 
 ### Recommended Configuration Order
 
-1. **Prowlarr** - Configure indexers first
-2. **Radarr/Sonarr/Lidarr** - Add Prowlarr as indexer source
-3. **Overseerr** - Connect to Plex and Radarr/Sonarr
-4. **Tautulli** - Connect to Plex
+1. **SABnzbd** - Configure download client first
+2. **Prowlarr** - Configure indexers
+3. **Radarr/Sonarr/Lidarr** - Add Prowlarr as indexer source, SABnzbd as download client
+4. **Overseerr** - Connect to Plex and Radarr/Sonarr
+5. **Tautulli** - Connect to Plex
 
 ### Service Connections
 
@@ -306,13 +310,19 @@ After deploying the *arr stack, configure the services to work together:
 
 ### Media Path Configuration
 
-All *arr apps mount the media volume at `/media`. Configure root folders as:
+All *arr apps and SABnzbd mount the media volume at `/media`. Configure paths as:
 
 | Service | Root Folder | Download Path |
 |---------|-------------|---------------|
+| SABnzbd | N/A | `/media/downloads` |
 | Radarr | `/media/movies` | `/media/downloads/complete/movies` |
 | Sonarr | `/media/tv` | `/media/downloads/complete/tv` |
 | Lidarr | `/media/music` | `/media/downloads/complete/music` |
+
+**SABnzbd Categories:** Configure categories in SABnzbd (Config → Categories) to sort downloads:
+- `movies` → `/media/downloads/complete/movies`
+- `tv` → `/media/downloads/complete/tv`
+- `music` → `/media/downloads/complete/music`
 
 ### API Keys
 
