@@ -3,8 +3,8 @@
 fileserver_ip: "10.100.0.1"
 fileserver_media_share: "media"
 fileserver_backup_share: "backups"
-fileserver_username: "<YOUR-USERNAME>"
-fileserver_password: "<SECRET HERE>"
+fileserver_username: "plex"
+fileserver_password: "Eitho7oo"
 
 # Consul configuration
 consul_data_dir: "/opt/consul/data"
@@ -29,7 +29,7 @@ user_uid: 1002
 group_gid: 1001
 
 # CSI Plugin configuration
-csi_smb_image: "mcr.microsoft.com/k8s/csi/smb-csi:v1.19.1"
+csi_smb_image: "mcr.microsoft.com/k8s/csi/smb-csi:v1.8.0"
 csi_plugin_id: "smb"
 csi_driver_name: "smb.csi.k8s.io"
 csi_log_level: 5

@@ -79,7 +79,7 @@
 
     - name: Deploy {{ media_server }} with Nomad Pack
       ansible.builtin.command:
-        cmd: nomad-pack run {{ media_server }} --registry={{ nomad_pack_registry_name }} {{ pack_vars }}
+        cmd: nomad-pack run --registry={{ nomad_pack_registry_name }} {{ pack_vars }} {{ media_server }}
       environment:
         NOMAD_ADDR: "{{ nomad_addr }}"
       register: pack_result
