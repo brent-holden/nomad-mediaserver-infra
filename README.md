@@ -136,7 +136,7 @@ ansible/
 │   ├── install-consul.yml
 │   ├── install-nomad.yml
 │   ├── install-podman-driver.yml
-│   └── setup-directories.yml
+│   └── setup-users.yml
 ├── templates/
 │   ├── backup-drive-volume.hcl.j2
 │   ├── cifs-csi-plugin-controller.nomad.j2
@@ -161,7 +161,7 @@ ansible/
 | `install-nomad.yml` | Installs Nomad from HashiCorp repository (Linux) or Homebrew (macOS) |
 | `configure-nomad.yml` | Deploys Nomad server and client configuration (includes dynamic host volumes) |
 | `install-podman-driver.yml` | Installs Podman and nomad-driver-podman |
-| `setup-directories.yml` | Creates users for media server ownership |
+| `setup-users.yml` | Creates users and groups for media server ownership |
 | `deploy-csi-plugins.yml` | Deploys CSI controller and node plugins |
 | `deploy-csi-volumes.yml` | Registers CSI volumes for media and backups |
 | `deploy-media-server.yml` | Deploys Plex or Jellyfin via Nomad Pack (auto-installs via Homebrew on macOS) |

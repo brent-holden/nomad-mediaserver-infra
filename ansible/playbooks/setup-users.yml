@@ -1,12 +1,11 @@
 ---
 # Playbook to create users/groups for media servers
-# Note: Directories are created by Nomad dynamic host volumes (mkdir plugin)
+# These users own the directories created by Nomad dynamic host volumes
 - name: Setup Media Server Users
   hosts: nomad_clients
   become: true
 
   tasks:
-    # Plex user and group setup (required for volume ownership)
     - name: Create plex group
       ansible.builtin.group:
         name: plex
