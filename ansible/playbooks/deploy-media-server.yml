@@ -77,6 +77,99 @@
           -var enable_backup={{ media_server_enable_backup | lower }}
           -var enable_update={{ media_server_enable_update | lower }}
 
+    # Create dynamic host volumes (mkdir plugin creates directories automatically)
+    - name: Create Plex config volume
+      ansible.builtin.shell: |
+        nomad volume create - <<'EOF'
+        name      = "plex-config"
+        type      = "host"
+        plugin_id = "mkdir"
+        capability {
+          access_mode     = "single-node-writer"
+          attachment_mode = "file-system"
+        }
+        parameters {
+          mode = "0755"
+          uid  = "{{ user_uid }}"
+          gid  = "{{ group_gid }}"
+        }
+        EOF
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
+      register: plex_config_vol
+      changed_when: "'Created' in plex_config_vol.stdout"
+      failed_when: false
+      when: media_server == "plex" or media_server == "both"
+
+    - name: Create Plex transcode volume
+      ansible.builtin.shell: |
+        nomad volume create - <<'EOF'
+        name      = "plex-transcode"
+        type      = "host"
+        plugin_id = "mkdir"
+        capability {
+          access_mode     = "single-node-writer"
+          attachment_mode = "file-system"
+        }
+        parameters {
+          mode = "0755"
+          uid  = "{{ user_uid }}"
+          gid  = "{{ group_gid }}"
+        }
+        EOF
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
+      register: plex_transcode_vol
+      changed_when: "'Created' in plex_transcode_vol.stdout"
+      failed_when: false
+      when: media_server == "plex" or media_server == "both"
+
+    - name: Create Jellyfin config volume
+      ansible.builtin.shell: |
+        nomad volume create - <<'EOF'
+        name      = "jellyfin-config"
+        type      = "host"
+        plugin_id = "mkdir"
+        capability {
+          access_mode     = "single-node-writer"
+          attachment_mode = "file-system"
+        }
+        parameters {
+          mode = "0755"
+          uid  = "{{ user_uid }}"
+          gid  = "{{ group_gid }}"
+        }
+        EOF
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
+      register: jellyfin_config_vol
+      changed_when: "'Created' in jellyfin_config_vol.stdout"
+      failed_when: false
+      when: media_server == "jellyfin" or media_server == "both"
+
+    - name: Create Jellyfin cache volume
+      ansible.builtin.shell: |
+        nomad volume create - <<'EOF'
+        name      = "jellyfin-cache"
+        type      = "host"
+        plugin_id = "mkdir"
+        capability {
+          access_mode     = "single-node-writer"
+          attachment_mode = "file-system"
+        }
+        parameters {
+          mode = "0755"
+          uid  = "{{ user_uid }}"
+          gid  = "{{ group_gid }}"
+        }
+        EOF
+      environment:
+        NOMAD_ADDR: "{{ nomad_addr }}"
+      register: jellyfin_cache_vol
+      changed_when: "'Created' in jellyfin_cache_vol.stdout"
+      failed_when: false
+      when: media_server == "jellyfin" or media_server == "both"
+
     - name: Deploy {{ media_server }} with Nomad Pack
       ansible.builtin.command:
         cmd: nomad-pack run --registry={{ nomad_pack_registry_name }} {{ pack_vars }} {{ media_server }}
