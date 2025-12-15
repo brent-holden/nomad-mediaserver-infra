@@ -1,59 +1,135 @@
-# Nomad CIFS/SMB CSI Infrastructure for Media
+# Nomad Media Server Infrastructure
 
-This repository contains Ansible playbooks for setting up a CIFS/SMB CSI (Container Storage Interface) plugin on HashiCorp Nomad and deploying media servers (Plex or Jellyfin).
+Ansible playbooks for deploying a complete media server infrastructure on HashiCorp Nomad with Plex or Jellyfin.
 
 ## Overview
 
-The setup deploys:
+This repository provides automated deployment of:
+
 - **Consul** - Service discovery and health checking
 - **Nomad** - Container orchestration with Podman driver
-- **CIFS CSI Plugin** - Controller and node plugins for mounting SMB/CIFS network shares
-- **CSI Volumes** - Pre-configured volumes for media and backup storage
-- **Dynamic Host Volumes** - Nomad-managed local storage for application configuration (requires Nomad 1.10+)
-- **Media Server** - Plex or Jellyfin via Nomad Pack
+- **CIFS/SMB CSI Plugin** - Network storage for media libraries via SMB/CIFS shares
+- **Dynamic Host Volumes** - Nomad-managed local storage using the `mkdir` plugin (Nomad 1.10+)
+- **Media Server** - Plex or Jellyfin deployed via Nomad Pack
 
 ## Architecture
 
-This setup uses a **controller-based deployment model**:
-
-- **Controller** (macOS workstation at `localhost`) - Runs Ansible and Nomad CLI commands
-- **Target** (Linux server at `192.168.0.10`) - Runs Consul, Nomad, and containers
-  - Secondary NIC on `10.100.0.0/30` network for NAS connectivity
-  - Mounts SMB/CIFS shares from NAS at `10.100.0.1`
-
-The controller uses `NOMAD_ADDR` to submit jobs to the remote Nomad cluster.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Controller (macOS)                          │
+│  - Ansible playbooks                                            │
+│  - Nomad CLI / Nomad Pack                                       │
+│  - Submits jobs via NOMAD_ADDR                                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  Target Server (192.168.0.10)                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
+│  │   Consul    │  │    Nomad    │  │   Podman Containers     │  │
+│  └─────────────┘  └─────────────┘  │  - Plex/Jellyfin        │  │
+│                                     │  - CSI Plugins          │  │
+│  ┌─────────────────────────────────┐│  - Backup/Update Jobs   │  │
+│  │  Secondary NIC (10.100.0.0/30)  │└─────────────────────────┘  │
+│  │  └─► NAS at 10.100.0.1          │                             │
+│  │      - /media (SMB share)       │                             │
+│  │      - /backups (SMB share)     │                             │
+│  └─────────────────────────────────┘                             │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Prerequisites
 
-Before using this repository, you must have a NAS (Network Attached Storage) configured with the following SMB/CIFS shares:
+### NAS Configuration
+
+Configure your NAS with SMB/CIFS shares:
 
 | Share | Purpose |
 |-------|---------|
-| `/media` | Media library storage (movies, TV shows, music) |
+| `/media` | Media library (movies, TV shows, music) |
 | `/backups` | Backup storage for application configurations |
 
-Configure your NAS credentials and share paths in `ansible/group_vars/all.yml`.
+### Software Requirements
+
+| Component | Controller (macOS) | Target (Linux) |
+|-----------|-------------------|----------------|
+| Ansible | Required | - |
+| Homebrew | Required | - |
+| Nomad | Auto-installed | Auto-installed |
+| Nomad Pack | Auto-installed | - |
+| Consul | - | Auto-installed |
+| Podman | - | Auto-installed |
 
 ## Quick Start
 
-1. Configure your settings in `ansible/group_vars/all.yml`
-2. Update `ansible/inventory.ini` with your hosts
-3. Run the ansible playbook:
+1. **Configure settings:**
+   ```bash
+   # Edit ansible/group_vars/all.yml with your NAS credentials and settings
+   ```
+
+2. **Deploy everything:**
    ```bash
    cd ansible
-
-   # Deploy with Plex (default)
    ansible-playbook -i inventory.ini site.yml
-
-   # Deploy with Jellyfin
-   ansible-playbook -i inventory.ini site.yml -e media_server=jellyfin
    ```
+
+3. **Access your media server:**
+   - Plex: http://192.168.0.10:32400
+   - Jellyfin: http://192.168.0.10:8096
+
+## Playbooks
+
+| Playbook | Description |
+|----------|-------------|
+| `site.yml` | Main playbook - deploys complete infrastructure |
+| `deploy-media-server.yml` | Deploy/redeploy media server only |
+| `restore-media-server.yml` | Restore configuration from backup |
+| `deploy-csi-plugins.yml` | Deploy CSI controller and node plugins |
+| `deploy-csi-volumes.yml` | Register CSI volumes |
+| `setup-users.yml` | Create users/groups for media server |
+
+### Deploying Media Servers
+
+```bash
+# Deploy Plex (default)
+ansible-playbook -i inventory.ini site.yml
+
+# Deploy Jellyfin
+ansible-playbook -i inventory.ini site.yml -e media_server=jellyfin
+
+# Deploy without GPU transcoding
+ansible-playbook -i inventory.ini site.yml -e media_server_gpu_transcoding=false
+
+# Deploy without backup jobs
+ansible-playbook -i inventory.ini site.yml -e media_server_enable_backup=false
+```
+
+### Restoring from Backup
+
+The restore playbook handles the complete restore workflow automatically:
+
+```bash
+# Restore from latest backup
+ansible-playbook -i inventory.ini playbooks/restore-media-server.yml
+
+# Restore from a specific date
+ansible-playbook -i inventory.ini playbooks/restore-media-server.yml -e backup_date=2025-01-15
+```
+
+The restore playbook:
+1. Stops the media server
+2. Dispatches the restore job
+3. Waits for restore to complete
+4. Restarts the media server
+
+**Note:** The `restore-plex` or `restore-jellyfin` job must be deployed first. Set `media_server_enable_restore=true` (enabled by default).
 
 ## Configuration
 
-Edit `ansible/group_vars/all.yml` to configure your deployment:
+All settings are in `ansible/group_vars/all.yml`:
 
 ### Fileserver Settings
+
 ```yaml
 fileserver_ip: "10.100.0.1"
 fileserver_media_share: "media"
@@ -62,18 +138,29 @@ fileserver_username: "<YOUR-USERNAME>"
 fileserver_password: "<YOUR-PASSWORD>"
 ```
 
-### Media Server Selection
+### Media Server Settings
+
 ```yaml
 # Choose one: "plex" or "jellyfin"
 media_server: "plex"
 
-# Pack options
-media_server_gpu_transcoding: true
-media_server_enable_backup: true
-media_server_enable_update: true
+# Pack options (passed to nomad-pack)
+media_server_gpu_transcoding: true    # Enable GPU transcoding
+media_server_enable_backup: true      # Enable periodic backup job
+media_server_enable_update: true      # Enable periodic update job
+media_server_enable_restore: true     # Enable restore job (for manual dispatch)
+```
+
+### User/Group Settings
+
+```yaml
+# Used for volume permissions and container user mapping
+user_uid: 1002
+group_gid: 1001
 ```
 
 ### Nomad Settings
+
 ```yaml
 nomad_addr: "http://192.168.0.10:4646"
 nomad_data_dir: "/opt/nomad/data"
@@ -81,171 +168,149 @@ nomad_config_dir: "/etc/nomad.d"
 nomad_plugin_dir: "/opt/nomad/plugins"
 ```
 
-### CSI Plugin Settings
-```yaml
-csi_smb_image: "mcr.microsoft.com/k8s/csi/smb-csi:v1.19.1"
-csi_plugin_id: "smb"
-csi_driver_name: "smb.csi.k8s.io"
-csi_log_level: 5
-csi_controller_cpu: 512
-csi_controller_memory: 512
-csi_node_cpu: 512
-csi_node_memory: 512
+## Storage Architecture
+
+### CSI Volumes (Network Storage)
+
+CSI volumes provide access to network shares via the SMB/CIFS CSI plugin:
+
+| Volume | Purpose | Mount Path |
+|--------|---------|------------|
+| `media-drive` | Media library | `/media` |
+| `backup-drive` | Backup storage | `/backups` |
+
+### Dynamic Host Volumes (Local Storage)
+
+Dynamic host volumes are created automatically by Nomad using the `mkdir` plugin. The Nomad client is configured with:
+
+```hcl
+client {
+  host_volumes_dir = "/opt/nomad/volumes"
+}
 ```
 
-## Runtime Overrides
+When jobs request host volumes, Nomad creates them on-demand with the specified ownership and permissions.
 
-Override configuration at runtime:
+| Volume | Purpose | Created By |
+|--------|---------|------------|
+| `plex-config` | Plex configuration and database | `deploy-media-server.yml` |
+| `jellyfin-config` | Jellyfin configuration and database | `deploy-media-server.yml` |
 
-```bash
-# Deploy Jellyfin instead of Plex
-ansible-playbook -i inventory.ini site.yml -e media_server=jellyfin
+## Jobs Deployed
 
-# Deploy without GPU transcoding
-ansible-playbook -i inventory.ini site.yml -e media_server_gpu_transcoding=false
+When you run `site.yml`, the following Nomad jobs are created:
 
-# Deploy without backup jobs
-ansible-playbook -i inventory.ini site.yml -e media_server_enable_backup=false
-
-# Combine options
-ansible-playbook -i inventory.ini site.yml -e media_server=jellyfin -e media_server_gpu_transcoding=false
-```
+| Job | Type | Description |
+|-----|------|-------------|
+| `cifs-csi-plugin-controller` | service | CSI volume lifecycle management |
+| `cifs-csi-plugin-node` | system | Mounts CSI volumes on nodes |
+| `plex` or `jellyfin` | service | Media server |
+| `backup-plex` or `backup-jellyfin` | batch/periodic | Daily backup at 2am |
+| `update-plex` or `update-jellyfin` | batch/periodic | Daily version check at 3am |
+| `restore-plex` or `restore-jellyfin` | batch/parameterized | Manual restore job |
 
 ## Directory Structure
 
 ```
 ansible/
+├── ansible.cfg                      # Ansible configuration
+├── inventory.ini                    # Host inventory
+├── site.yml                         # Main playbook
 ├── group_vars/
-│   └── all.yml                  # All configuration variables
+│   └── all.yml                      # All configuration variables
 ├── playbooks/
 │   ├── configure-consul.yml
 │   ├── configure-nomad.yml
-│   ├── deploy-csi-plugins.yml   # Deploys CSI controller and node plugins
-│   ├── deploy-csi-volumes.yml   # Registers CSI volumes
-│   ├── deploy-media-server.yml  # Deploys media server via Nomad Pack
+│   ├── deploy-csi-plugins.yml
+│   ├── deploy-csi-volumes.yml
+│   ├── deploy-media-server.yml
+│   ├── restore-media-server.yml     # Restore from backup
 │   ├── disable-firewall.yml
 │   ├── install-consul.yml
 │   ├── install-nomad.yml
 │   ├── install-podman-driver.yml
 │   └── setup-users.yml
-├── templates/
-│   ├── backup-drive-volume.hcl.j2
-│   ├── cifs-csi-plugin-controller.nomad.j2
-│   ├── cifs-csi-plugin-node.nomad.j2
-│   ├── client.hcl.j2             # Client config with host_volumes_dir
-│   ├── consul.hcl.j2
-│   ├── media-drive-volume.hcl.j2
-│   ├── podman.hcl.j2
-│   └── server.hcl.j2
-├── inventory.ini
-└── site.yml
+└── templates/
+    ├── backup-drive-volume.hcl.j2
+    ├── cifs-csi-plugin-controller.nomad.j2
+    ├── cifs-csi-plugin-node.nomad.j2
+    ├── client.hcl.j2
+    ├── consul.hcl.j2
+    ├── media-drive-volume.hcl.j2
+    ├── podman.hcl.j2
+    └── server.hcl.j2
 ```
 
-## Ansible Playbooks
+## Manual Operations
 
-| Playbook | Description |
-|----------|-------------|
-| `site.yml` | Main playbook - runs all playbooks in order |
-| `disable-firewall.yml` | Disables firewalld (RHEL) or ufw (Debian) |
-| `install-consul.yml` | Installs Consul from HashiCorp repository |
-| `configure-consul.yml` | Deploys Consul server configuration |
-| `install-nomad.yml` | Installs Nomad from HashiCorp repository (Linux) or Homebrew (macOS) |
-| `configure-nomad.yml` | Deploys Nomad server and client configuration |
-| `install-podman-driver.yml` | Installs Podman and nomad-driver-podman |
-| `setup-users.yml` | Creates users and groups for media server ownership |
-| `deploy-csi-plugins.yml` | Deploys CSI controller and node plugins |
-| `deploy-csi-volumes.yml` | Registers CSI volumes for media and backups |
-| `deploy-media-server.yml` | Deploys Plex or Jellyfin via Nomad Pack (auto-installs via Homebrew on macOS) |
-
-## CSI Plugins
-
-The playbooks deploy two CSI plugin jobs:
-
-| Job | Type | Description |
-|-----|------|-------------|
-| `cifs-csi-plugin-controller` | service | Volume lifecycle management (create, delete) |
-| `cifs-csi-plugin-node` | system | Mounts volumes on each Nomad client node |
-
-## CSI Volumes
-
-| Volume | Purpose |
-|--------|---------|
-| `media-drive` | Shared media library (movies, TV shows, music) |
-| `backup-drive` | Backup storage for application configurations |
-
-## Dynamic Host Volumes
-
-The Nomad client is configured with `host_volumes_dir` set to `/opt/nomad/host_volumes`. This enables Nomad's dynamic host volume feature (requires Nomad 1.10+) where volumes are defined in job specifications and created on-demand using the built-in `mkdir` plugin.
-
-When a job requests a dynamic host volume, Nomad automatically creates the directory with the specified ownership and permissions. See [Nomad Dynamic Host Volumes](https://developer.hashicorp.com/nomad/docs/stateful-workloads/dynamic-host-volumes) for more information.
-
-## Media Server Features
-
-Both Plex and Jellyfin are deployed with:
-
-| Feature | Description | Variable |
-|---------|-------------|----------|
-| GPU Transcoding | Hardware-accelerated transcoding via `/dev/dri` | `media_server_gpu_transcoding` |
-| Backup Job | Daily backup of configuration (2am) | `media_server_enable_backup` |
-| Update Job | Daily version check (3am) | `media_server_enable_update` |
-
-## Switching Media Servers
-
-To switch from one media server to another:
-
-1. Stop the current media server:
-   ```bash
-   nomad job stop plex   # or jellyfin
-   ```
-
-2. Deploy the new media server:
-   ```bash
-   ansible-playbook -i inventory.ini playbooks/deploy-media-server.yml -e media_server=jellyfin
-   ```
-
-## Manual Infrastructure Setup
-
-If not using Ansible for infrastructure, see the templates in `ansible/templates/` for configuration examples.
-
-After infrastructure is set up, you can still use the media server playbook:
+### Switching Media Servers
 
 ```bash
-ansible-playbook -i inventory.ini playbooks/deploy-media-server.yml
+# Stop current server
+NOMAD_ADDR=http://192.168.0.10:4646 nomad-pack destroy plex --registry=mediaserver
+
+# Deploy new server
+ansible-playbook -i inventory.ini playbooks/deploy-media-server.yml -e media_server=jellyfin
 ```
 
-Or deploy manually with Nomad Pack:
+### Manual Restore
 
 ```bash
-nomad-pack registry add mediaserver github.com/brent-holden/nomad-mediaserver-packs
-nomad-pack run plex --registry=mediaserver -var gpu_transcoding=true
+# Dispatch restore job directly
+NOMAD_ADDR=http://192.168.0.10:4646 nomad job dispatch restore-plex
+
+# With specific backup date
+NOMAD_ADDR=http://192.168.0.10:4646 nomad job dispatch -meta backup_date=2025-01-15 restore-plex
 ```
 
-## Software Dependencies
+### Manual Nomad Pack Deployment
 
-### Controller (macOS)
+```bash
+NOMAD_ADDR=http://192.168.0.10:4646 nomad-pack registry add mediaserver github.com/brent-holden/nomad-mediaserver-packs
+NOMAD_ADDR=http://192.168.0.10:4646 nomad-pack run plex --registry=mediaserver \
+  -var gpu_transcoding=true \
+  -var enable_backup=true \
+  -var enable_update=true \
+  -var enable_restore=true
+```
 
-The playbooks automatically install CLI tools on the controller via Homebrew:
+## Troubleshooting
 
-| Tool | Installed By | Purpose |
-|------|--------------|---------|
-| Nomad CLI | `install-nomad.yml` | Submit jobs to remote Nomad cluster |
-| Nomad Pack | `deploy-media-server.yml` | Deploy media server packs |
+### Check Job Status
 
-Both are installed from `hashicorp/tap` (e.g., `hashicorp/tap/nomad`).
+```bash
+NOMAD_ADDR=http://192.168.0.10:4646 nomad job status
+NOMAD_ADDR=http://192.168.0.10:4646 nomad job status plex
+```
 
-### Target Server (Linux)
+### View Logs
 
-| Prerequisite | Installed By | Notes |
-|--------------|--------------|-------|
-| Consul | `install-consul.yml` | |
-| Nomad 1.10+ | `install-nomad.yml` | Required for dynamic host volumes |
-| Podman | `install-podman-driver.yml` | |
+```bash
+NOMAD_ADDR=http://192.168.0.10:4646 nomad alloc logs -job plex
+NOMAD_ADDR=http://192.168.0.10:4646 nomad alloc logs -job backup-plex
+```
+
+### Check Volumes
+
+```bash
+NOMAD_ADDR=http://192.168.0.10:4646 nomad volume status
+NOMAD_ADDR=http://192.168.0.10:4646 nomad volume status -type host
+```
+
+### Check CSI Plugin Health
+
+```bash
+NOMAD_ADDR=http://192.168.0.10:4646 nomad plugin status smb
+```
 
 ## Notes
 
-- All configuration is managed through `ansible/group_vars/all.yml`
 - Only one media server (Plex or Jellyfin) can be deployed at a time
-- The SMB share is mounted with `user_uid` (1002) and `group_gid` (1001) for container access
-- Backup volume uses `cache=none` and `nobrl` mount options for rsync compatibility
 - GPU transcoding requires `/dev/dri` on the host
-- CLI tools are installed locally; services run on the remote server
+- Backups are stored in `/backups/{plex,jellyfin}/YYYY-MM-DD/`
+- Backup retention is 14 days by default
+- Dynamic host volumes require Nomad 1.10+
+
+## Related Repositories
+
+- [nomad-mediaserver-packs](https://github.com/brent-holden/nomad-mediaserver-packs) - Nomad Pack templates for Plex and Jellyfin
