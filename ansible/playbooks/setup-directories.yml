@@ -25,22 +25,3 @@
         system: true
         state: present
       when: media_server == "plex" or media_server == "both"
-
-    # Create parent directories for dynamic host volumes
-    - name: Create /opt/plex parent directory
-      ansible.builtin.file:
-        path: /opt/plex
-        state: directory
-        owner: plex
-        group: plex
-        mode: "0755"
-      when: media_server == "plex" or media_server == "both"
-
-    - name: Create /opt/jellyfin parent directory
-      ansible.builtin.file:
-        path: /opt/jellyfin
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
-      when: media_server == "jellyfin" or media_server == "both"

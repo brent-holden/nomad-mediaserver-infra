@@ -131,7 +131,6 @@ ansible/
 │   ├── configure-nomad.yml
 │   ├── deploy-csi-plugins.yml   # Deploys CSI controller and node plugins
 │   ├── deploy-csi-volumes.yml   # Registers CSI volumes
-│   ├── deploy-host-volumes.yml  # Creates dynamic host volumes
 │   ├── deploy-media-server.yml  # Deploys media server via Nomad Pack
 │   ├── disable-firewall.yml
 │   ├── install-consul.yml
@@ -142,13 +141,9 @@ ansible/
 │   ├── backup-drive-volume.hcl.j2
 │   ├── cifs-csi-plugin-controller.nomad.j2
 │   ├── cifs-csi-plugin-node.nomad.j2
-│   ├── client.hcl.j2
+│   ├── client.hcl.j2             # Includes dynamic host volume definitions
 │   ├── consul.hcl.j2
-│   ├── jellyfin-cache-volume.hcl.j2
-│   ├── jellyfin-config-volume.hcl.j2
 │   ├── media-drive-volume.hcl.j2
-│   ├── plex-config-volume.hcl.j2
-│   ├── plex-transcode-volume.hcl.j2
 │   ├── podman.hcl.j2
 │   └── server.hcl.j2
 ├── inventory.ini
@@ -164,12 +159,11 @@ ansible/
 | `install-consul.yml` | Installs Consul from HashiCorp repository |
 | `configure-consul.yml` | Deploys Consul server configuration |
 | `install-nomad.yml` | Installs Nomad from HashiCorp repository (Linux) or Homebrew (macOS) |
-| `configure-nomad.yml` | Deploys Nomad server and client configuration |
+| `configure-nomad.yml` | Deploys Nomad server and client configuration (includes dynamic host volumes) |
 | `install-podman-driver.yml` | Installs Podman and nomad-driver-podman |
-| `setup-directories.yml` | Creates users and parent directories for host volumes |
+| `setup-directories.yml` | Creates users for media server ownership |
 | `deploy-csi-plugins.yml` | Deploys CSI controller and node plugins |
 | `deploy-csi-volumes.yml` | Registers CSI volumes for media and backups |
-| `deploy-host-volumes.yml` | Creates dynamic host volumes for local storage |
 | `deploy-media-server.yml` | Deploys Plex or Jellyfin via Nomad Pack (auto-installs via Homebrew on macOS) |
 
 ## CSI Plugins
@@ -190,7 +184,7 @@ The playbooks deploy two CSI plugin jobs:
 
 ## Dynamic Host Volumes
 
-These volumes are created using Nomad's dynamic host volume feature (requires Nomad 1.10+). The `mkdir` plugin automatically creates directories with the correct ownership and permissions.
+These volumes are defined in the Nomad client configuration (`client.hcl.j2`) using Nomad's dynamic host volume feature (requires Nomad 1.10+). The `mkdir` plugin automatically creates directories with the correct ownership and permissions when the Nomad client starts.
 
 | Volume | Path | Purpose |
 |--------|------|---------|
@@ -199,7 +193,7 @@ These volumes are created using Nomad's dynamic host volume feature (requires No
 | `jellyfin-config` | `/opt/jellyfin/config` | Jellyfin configuration and database |
 | `jellyfin-cache` | `/opt/jellyfin/cache` | Jellyfin cache storage |
 
-Volumes are created by `deploy-host-volumes.yml` using `nomad volume create`. See [Nomad Dynamic Host Volumes](https://developer.hashicorp.com/nomad/docs/stateful-workloads/dynamic-host-volumes) for more information.
+Volumes are registered automatically when the Nomad client starts. See [Nomad Dynamic Host Volumes](https://developer.hashicorp.com/nomad/docs/stateful-workloads/dynamic-host-volumes) for more information.
 
 ## Media Server Features
 
