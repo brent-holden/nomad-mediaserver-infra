@@ -11,7 +11,7 @@ This repository provides automated deployment of:
 - **CIFS/SMB CSI Plugin** - Network storage for media libraries via SMB/CIFS shares
 - **Dynamic Host Volumes** - Nomad-managed local storage using the `mkdir` plugin (Nomad 1.10+)
 - **Media Server** - Plex or Jellyfin deployed via Nomad Pack
-- **Media Automation** - Radarr, Sonarr, Lidarr, Prowlarr, Seerr (or Overseerr), Tautulli
+- **Media Automation** - Radarr, Sonarr, Lidarr, Prowlarr, Seerr, Tautulli, SABnzbd, Unmanic
 
 ## Architecture
 
@@ -93,6 +93,7 @@ Configure your NAS with SMB/CIFS shares:
    | Seerr | http://192.168.0.10:5055 (or https via reverse proxy) |
    | Tautulli | http://192.168.0.10:8181 |
    | SABnzbd | http://192.168.0.10:8080 |
+   | Unmanic | http://192.168.0.10:8888 |
 
 ## Playbooks
 
@@ -143,9 +144,9 @@ ansible-playbook -i inventory.ini playbooks/deploy-arr-stack.yml \
   -e arr_enable_backup=false
 ```
 
-**Available services:** `radarr`, `sonarr`, `lidarr`, `prowlarr`, `seerr`, `tautulli`, `sabnzbd`
+**Available services:** `radarr`, `sonarr`, `lidarr`, `prowlarr`, `seerr`, `tautulli`, `sabnzbd`, `unmanic`
 
-**Note:** Seerr is the default request manager. To use Overseerr instead, explicitly include `overseerr` in the services list. Seerr and Overseerr cannot be deployed simultaneously (they use the same port). Optional reverse proxies (`seerr-reverse-proxy`, `overseerr-reverse-proxy`) require the `proxy_dns_name` variable.
+**Note:** The optional `seerr-reverse-proxy` requires the `proxy_dns_name` variable.
 
 ### Restoring from Backup
 
@@ -265,9 +266,9 @@ When jobs request host volumes, Nomad creates them on-demand with the specified 
 | `lidarr-config` | Lidarr configuration and database | `deploy-arr-stack.yml` |
 | `prowlarr-config` | Prowlarr configuration and database | `deploy-arr-stack.yml` |
 | `seerr-config` | Seerr configuration and database | `deploy-arr-stack.yml` |
-| `overseerr-config` | Overseerr configuration and database | `deploy-arr-stack.yml` |
 | `tautulli-config` | Tautulli configuration and database | `deploy-arr-stack.yml` |
 | `sabnzbd-config` | SABnzbd configuration and database | `deploy-arr-stack.yml` |
+| `unmanic-config` | Unmanic configuration and database | `deploy-arr-stack.yml` |
 
 **Access Mode:** Host volumes are created with `single-node-multi-writer` access mode, which allows the backup and restore jobs to access the config volume while the main service is running.
 
@@ -296,11 +297,11 @@ Each *arr service creates multiple jobs:
 | Lidarr | `lidarr` | `lidarr-backup` | `lidarr-update` |
 | Prowlarr | `prowlarr` | `prowlarr-backup` | `prowlarr-update` |
 | Seerr | `seerr` | `seerr-backup` | `seerr-update` |
-| Overseerr | `overseerr` | `overseerr-backup` | `overseerr-update` |
 | Tautulli | `tautulli` | `tautulli-backup` | `tautulli-update` |
 | SABnzbd | `sabnzbd` | `sabnzbd-backup` | `sabnzbd-update` |
+| Unmanic | `unmanic` | `unmanic-backup` | `unmanic-update` |
 
-Optional reverse proxy jobs: `seerr-reverse-proxy`, `overseerr-reverse-proxy`
+Optional reverse proxy jobs: `seerr-reverse-proxy`
 
 Restore jobs (`radarr-restore`, `sonarr-restore`, etc.) are created during the restore workflow and removed after completion.
 
@@ -348,7 +349,7 @@ All *arr apps and SABnzbd mount the media volume at `/media`. Configure paths as
 Each *arr app generates an API key on first run. Find it at:
 - **Settings → General → Security → API Key**
 
-You'll need these API keys when connecting services (e.g., adding Radarr to Prowlarr or Overseerr).
+You'll need these API keys when connecting services (e.g., adding Radarr to Prowlarr or Seerr).
 
 ## Directory Structure
 
