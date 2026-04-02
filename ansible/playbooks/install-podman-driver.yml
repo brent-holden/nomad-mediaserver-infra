@@ -59,6 +59,15 @@
         mode: "0644"
       notify: Restart Nomad
 
+    - name: Disable Docker driver container GC
+      ansible.builtin.template:
+        src: ../templates/docker.hcl.j2
+        dest: "{{ nomad_config_dir }}/docker.hcl"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Nomad
+
   handlers:
     - name: Restart Nomad
       ansible.builtin.systemd:

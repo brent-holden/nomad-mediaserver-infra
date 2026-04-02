@@ -1,0 +1,11 @@
+# Disable the Docker driver's container garbage collection.
+# The podman-docker compatibility package symlinks the Docker socket to Podman,
+# causing the Docker driver to activate and delete Podman-managed containers
+# as "untracked." Disabling GC prevents this.
+plugin "docker" {
+  config {
+    gc {
+      container = false
+    }
+  }
+}
