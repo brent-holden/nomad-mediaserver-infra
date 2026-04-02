@@ -8,6 +8,13 @@ job "cifs-csi-plugin-controller" {
   group "controller" {
     count = 1
 
+    restart {
+      attempts = 10
+      interval = "30m"
+      delay    = "15s"
+      mode     = "delay"
+    }
+
     task "plugin" {
       driver = "podman"
 

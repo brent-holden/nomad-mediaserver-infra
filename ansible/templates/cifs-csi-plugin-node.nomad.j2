@@ -6,6 +6,13 @@ job "cifs-csi-plugin-node" {
 
   # The nodes group runs the plugin on all client nodes.
   group "nodes" {
+    restart {
+      attempts = 10
+      interval = "30m"
+      delay    = "15s"
+      mode     = "delay"
+    }
+
     task "plugin" {
       driver = "podman"
 
